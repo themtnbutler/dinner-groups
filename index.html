@@ -1,0 +1,168 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2862
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="en">\
+<head>\
+<meta charset="UTF-8" />\
+<meta name="viewport" content="width=device-width, initial-scale=1" />\
+<title>Dinner Group Organizer</title>\
+<style>\
+  body \{ font-family: Arial, sans-serif; margin: 20px; max-width: 900px; \}\
+  input, button \{ margin: 10px 0; padding: 8px; font-size: 16px; \}\
+  table \{ border-collapse: collapse; width: 100%; margin-top: 20px; \}\
+  th, td \{ border: 1px solid #ccc; padding: 8px; text-align: left; \}\
+  th \{ background: #f4f4f4; \}\
+  .group-header \{ background: #ddd; font-weight: bold; padding: 10px; margin-top: 30px; \}\
+</style>\
+</head>\
+<body>\
+\
+<h1>Dinner Group Organizer</h1>\
+<p>Upload your CSV file with columns <code>name,email</code>.</p>\
+<input type="file" id="fileInput" accept=".csv" />\
+<br />\
+<button id="shuffleBtn" disabled>Shuffle Groups</button>\
+\
+<div id="output"></div>\
+\
+<script>\
+const GROUP_SIZE_MIN = 10;\
+const GROUP_SIZE_MAX = 12;\
+const NUM_WEEKS = 8;\
+\
+function parseCSV(text) \{\
+  const lines = text.trim().split('\\n');\
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());\
+  const data = [];\
+  for(let i = 1; i < lines.length; i++) \{\
+    const row = lines[i].split(',');\
+    if(row.length === headers.length) \{\
+      const entry = \{\};\
+      headers.forEach((h, idx) => entry[h] = row[idx].trim());\
+      if(entry.name && entry.email) data.push(entry);\
+    \}\
+  \}\
+  return data;\
+\}\
+\
+function getLastName(fullName) \{\
+  const parts = fullName.trim().split(' ');\
+  return parts.length ? parts[parts.length - 1].toLowerCase() : '';\
+\}\
+\
+function groupByFamily(people) \{\
+  const families = \{\};\
+  people.forEach(p => \{\
+    const lname = getLastName(p.name);\
+    if(!families[lname]) families[lname] = [];\
+    families[lname].push(p);\
+  \});\
+  return Object.values(families);\
+\}\
+\
+function shuffleArray(array) \{\
+  for(let i = array.length - 1; i > 0; i--) \{\
+    const j = Math.floor(Math.random() * (i+1));\
+    [array[i], array[j]] = [array[j], array[i]];\
+  \}\
+\}\
+\
+function distributeGroups(families) \{\
+  shuffleArray(families);\
+  const groups = [];\
+  let currentGroup = [];\
+  let currentSize = 0;\
+\
+  families.forEach(family => \{\
+    if(currentSize + family.length > GROUP_SIZE_MAX) \{\
+      if(currentSize >= GROUP_SIZE_MIN) \{\
+        groups.push(currentGroup);\
+        currentGroup = [];\
+        currentSize = 0;\
+      \}\
+    \}\
+    currentGroup = currentGroup.concat(family);\
+    currentSize += family.length;\
+  \});\
+\
+  if(currentGroup.length) groups.push(currentGroup);\
+  return groups;\
+\}\
+\
+function assignWeeks(groups) \{\
+  return groups.map((group, i) => (\{\
+    week: (i % NUM_WEEKS) + 1,\
+    groupId: i + 1,\
+    members: group\
+  \}));\
+\}\
+\
+function renderGroups(groupsWithWeeks) \{\
+  const container = document.getElementById('output');\
+  container.innerHTML = '';\
+\
+  groupsWithWeeks.forEach(g => \{\
+    const div = document.createElement('div');\
+    div.classList.add('group-header');\
+    div.textContent = `Week $\{g.week\} \'97 Group $\{g.groupId\} ($\{g.members.length\} people)`;\
+    container.appendChild(div);\
+\
+    const table = document.createElement('table');\
+    const thead = document.createElement('thead');\
+    thead.innerHTML = '<tr><th>Name</th><th>Email</th></tr>';\
+    table.appendChild(thead);\
+\
+    const tbody = document.createElement('tbody');\
+    g.members.forEach(m => \{\
+      const tr = document.createElement('tr');\
+      tr.innerHTML = `<td>$\{m.name\}</td><td>$\{m.email\}</td>`;\
+      tbody.appendChild(tr);\
+    \});\
+    table.appendChild(tbody);\
+    container.appendChild(table);\
+  \});\
+\}\
+\
+// Main logic\
+\
+let currentPeople = [];\
+\
+document.getElementById('fileInput').addEventListener('change', e => \{\
+  const file = e.target.files[0];\
+  if(!file) return;\
+  const reader = new FileReader();\
+  reader.onload = function(evt) \{\
+    currentPeople = parseCSV(evt.target.result);\
+    if(currentPeople.length === 0) \{\
+      alert('No valid entries found in CSV!');\
+      document.getElementById('shuffleBtn').disabled = true;\
+      document.getElementById('output').innerHTML = '';\
+      return;\
+    \}\
+    document.getElementById('shuffleBtn').disabled = false;\
+    shuffleAndRender();\
+  \};\
+  reader.readAsText(file);\
+\});\
+\
+function shuffleAndRender() \{\
+  const families = groupByFamily(currentPeople);\
+  const groups = distributeGroups(families);\
+  const assigned = assignWeeks(groups);\
+  renderGroups(assigned);\
+\}\
+\
+document.getElementById('shuffleBtn').addEventListener('click', () => \{\
+  shuffleAndRender();\
+\});\
+\
+</script>\
+\
+</body>\
+</html>\
+}
